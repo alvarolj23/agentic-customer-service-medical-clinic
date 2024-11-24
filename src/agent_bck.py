@@ -2,6 +2,12 @@ import os
 from dotenv import load_dotenv
 import sys
 from langchain_openai import AzureChatOpenAI
+
+load_dotenv()
+WORKDIR=os.getenv("WORKDIR")
+#os.chdir(WORKDIR)
+sys.path.append(WORKDIR)
+
 from langchain_core.messages import HumanMessage, SystemMessage
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, StateGraph, MessagesState
@@ -9,29 +15,24 @@ from langgraph.prebuilt import ToolNode
 from typing import TypedDict, Annotated, List, Literal
 from langchain_core.messages import AnyMessage, HumanMessage
 import operator
-from src.tools_ai_search import search_product_details
+from src.validators.agent_validators import *
+from src.agent_tools import check_availability_by_doctor, check_availability_by_specialization, check_results, set_appointment, cancel_appointment, reminder_appointment, reschedule_appointment, retrieve_faq_info, get_catalog_specialists, obtain_specialization_by_doctor
 from datetime import datetime
+from src.utils import get_model
 import logging
-
-
-
-load_dotenv()
-
-# Remove after the tests
-WORKDIR=os.getenv("WORKDIR")
-#os.chdir(WORKDIR)
-sys.path.append(WORKDIR)
+import logging_config
 
 logger = logging.getLogger(__name__)
 
 class MessagesState(TypedDict):
     messages: Annotated[List[AnyMessage], operator.add]
 
-tools = [search_product_details]
+tools = [obtain_specialization_by_doctor, check_availability_by_doctor, check_availability_by_specialization, cancel_appointment, get_catalog_specialists, retrieve_faq_info, set_appointment, reminder_appointment, check_results,reschedule_appointment, reschedule_appointment]
 
 tool_node = ToolNode(tools)
 
 
+#model = get_model('meta')
 model = AzureChatOpenAI(
     azure_deployment=os.environ["AZURE_OPENAI_CHAT_DEPLOYMENT_NAME"],
     openai_api_version=os.environ["AZURE_OPENAI_API_VERSION"],
@@ -61,7 +62,7 @@ def should_continue_with_feedback(state: MessagesState) -> Literal["agent", "end
 
 
 def call_model(state: MessagesState):
-    messages = [SystemMessage(content=f"You are helpful assistant in Azelis, a specialty distributor of chemicals and food ingredients.\nAs reference, today is {datetime.now().strftime('%Y-%m-%d %H:%M, %A')}.\nKeep a friendly, professional tone.\nAvoid verbosity.\nConsiderations:\n- Don´t assume parameters in call functions that it didnt say.\n- MUST NOT force users how to write. Let them write in the way they want.\n- The conversation should be very natural like a secretary talking with a client.\n- Call only ONE tool at a time.")] + state['messages']
+    messages = [SystemMessage(content=f"You are helpful assistant in Ovide Clinic, dental care center in California (United States).\nAs reference, today is {datetime.now().strftime('%Y-%m-%d %H:%M, %A')}.\nKeep a friendly, professional tone.\nAvoid verbosity.\nConsiderations:\n- Don´t assume parameters in call functions that it didnt say.\n- MUST NOT force users how to write. Let them write in the way they want.\n- The conversation should be very natural like a secretary talking with a client.\n- Call only ONE tool at a time.")] + state['messages']
     response = model.invoke(messages)
     return {"messages": [response]}
 
@@ -112,3 +113,4 @@ if __name__ == '__main__':
                     continue
                 else:
                     print(msg)
+

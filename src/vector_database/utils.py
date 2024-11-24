@@ -4,7 +4,7 @@ import sys
 
 load_dotenv()
 WORKDIR=os.getenv("WORKDIR")
-os.chdir(WORKDIR)
+#os.chdir(WORKDIR)
 sys.path.append(WORKDIR)
 
 from langchain_community.document_loaders import JSONLoader
@@ -13,6 +13,7 @@ from dotenv import load_dotenv
 import time
 from langchain_pinecone import PineconeVectorStore
 from langchain_openai import OpenAIEmbeddings
+from langchain_openai import AzureOpenAIEmbeddings
 from langchain_core.documents import Document
 from typing import Dict
 from src.validators.pinecone_validators import IndexNameStructure, ExpectedNewData
@@ -20,6 +21,19 @@ import logging
 import logging_config
 
 logger = logging.getLogger(__name__)
+
+azure_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
+azure_openai_api_key = os.getenv("AZURE_OPENAI_API_KEY")
+azure_openai_api_version = os.getenv("AZURE_OPENAI_API_VERSION")
+azure_deployment = os.getenv("AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME")
+
+# Initialize embeddings
+embeddings = AzureOpenAIEmbeddings(
+    azure_deployment=azure_deployment,
+    openai_api_version=azure_openai_api_version,
+    azure_endpoint=azure_endpoint,
+    api_key=azure_openai_api_key,
+)
 
 
 class PineconeManagment:
@@ -42,7 +56,7 @@ class PineconeManagment:
 
         return loader.load()
     
-    def creating_index(self, index_name: str, docs: Document, dimension=1536, metric="cosine", embedding = OpenAIEmbeddings(model="text-embedding-ada-002")):
+    def creating_index(self, index_name: str, docs: Document, dimension=1536, metric="cosine", embedding = embeddings):
         logger.info(f"Creating index {index_name}...")
         IndexNameStructure(index_name=index_name)
         pc = Pinecone(api_key=os.getenv('PINECONE_API_KEY'))
@@ -65,7 +79,7 @@ class PineconeManagment:
 
         logger.info(f"Index '{index_name}' populated with data...")
         
-    def loading_vdb(self, index_name: str, embedding=OpenAIEmbeddings(model="text-embedding-ada-002")):
+    def loading_vdb(self, index_name: str, embedding=embeddings):
         logger.info("Loading vector database from Pinecone...")
         self.vdb =  PineconeVectorStore(index_name=index_name, embedding=embedding)
         logger.info("Vector database loaded...")

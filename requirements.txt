@@ -11,3 +11,5 @@ langchain-google-genai
 pandas
 langchain_anthropic
 langchain_groq
+azure-search-documents
+azure-identity
